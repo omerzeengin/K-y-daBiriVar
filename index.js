@@ -2,13 +2,13 @@ const {
     default: makeWASocket, 
     useMultiFileAuthState, 
     DisconnectReason,
-    Browsers
+    fetchLatestBaileysVersion
 } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const express = require('express');
 
-// Render port hatasını çözmek için web sunucusu
+// Render port hatasını çözmek için sahte web sunucusu başlatıyoruz
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -21,16 +21,14 @@ app.listen(PORT, () => {
 });
 
 async function botuBaşlat() {
-    // 405 hatasını aşmak için sıfır, temiz bir oturum klasörü tanımlıyoruz
-    const { state, saveCreds } = await useMultiFileAuthState('karsilama_kesin_cozum');
+    const { state, saveCreds } = await useMultiFileAuthState('bot_oturum_data');
+    const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
+        version,
         logger: pino({ level: 'silent' }),
         auth: state,
-        // WhatsApp'ın bağlantıyı reddetmesini (405) engellemek için tarayıcı kimliği
-        browser: Browsers.macOS('Desktop'),
-        syncFullHistory: false,
-        markOnlineOnConnect: true
+        browser: ["KiyidanAv", "Chrome", "1.0.0"]
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -40,7 +38,7 @@ async function botuBaşlat() {
         
         if (qr) {
             console.log('\n=========================================');
-            console.log('   LÜTFEN BU YENİ QR KODU WHATSAPP ILE TARATIN');
+            console.log('   LÜTFEN BU QR KODU WHATSAPP ILE TARATIN');
             console.log('=========================================\n');
             qrcode.generate(qr, { small: true });
         }
@@ -58,7 +56,6 @@ async function botuBaşlat() {
         }
     });
 
-    // 1. ÖZELLİK: YENİ ÜYE KARŞILAMA
     sock.ev.on('group-participants.update', async (update) => {
         const { id, participants, action } = update;
 
@@ -72,32 +69,11 @@ async function botuBaşlat() {
                         text: karşılamaMetni, 
                         mentions: [numara] 
                     });
+                    console.log(`Yeni üye (${etiketle}) karşılandı.`);
                 } catch (hata) {
-                    console.error("Karşılama gönderilemedi: ", hata);
+                    console.error("Mesaj gönderilemedi: ", hata);
                 }
             }
-        }
-    });
-
-    // 2. ÖZELLİK: MESAJLARI DİNLEME VE CEVAPLAMA 💬
-    sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
-
-        const chatId = msg.key.remoteJid;
-        const gelenMesaj = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim();
-
-        if (gelenMesaj === 'sa' || gelenMesaj === 'selam' || gelenMesaj === 'selamlar') {
-            await sock.sendMessage(chatId, { text: 'Aleyküm selam, hoş geldin! Raporlar ne alemde, var mı kıyıda hareket? 🎣' }, { quoted: msg });
-        }
-        else if (gelenMesaj === 'merhaba') {
-            await sock.sendMessage(chatId, { text: 'Merhaba! Keyifli sohbetler, rastgele. 🐟' }, { quoted: msg });
-        }
-        else if (gelenMesaj === 'bot' || gelenMesaj === 'sen kimsin') {
-            await sock.sendMessage(chatId, { text: 'Ben KıyıdaBiriVar grubunun resmi nöbetçi asistanıyım! Gruba yeni katılanları karşılar, meralardan bilgi taşırım. 🚀' }, { quoted: msg });
-        }
-        else if (gelenMesaj === 'rastgele' || gelenMesaj === 'rastgelsin') {
-            await sock.sendMessage(chatId, { text: 'Eyvallah kral, hepimize rastgele! İğnen keskin, livarın dolu olsun. 🎣⚓' }, { quoted: msg });
         }
     });
 }
