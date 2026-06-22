@@ -11,14 +11,20 @@ async function botuBaşlat() {
 
     const sock = makeWASocket({
         logger: pino({ level: 'silent' }),
-        auth: state,
-        printQRInTerminal: true
+        auth: state
     });
 
     sock.ev.on('creds.update', saveCreds);
 
+    // QR kodun terminalde görünmesini sağlayan güncel kısım burası
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
+        
+        if (qr) {
+            console.log('--- LÜTFEN BU QR KODU WHATSAPP ILE TARATIN ---');
+            qrcode.generate(qr, { small: true });
+        }
+
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log('Bağlantı kapandı, tekrar bağlanıyor: ', shouldReconnect);
@@ -34,8 +40,6 @@ async function botuBaşlat() {
         if (action === 'add') {
             for (let numara of participants) {
                 const etiketle = numara.split('@')[0]; 
-                
-                // Mesaj içeriğini buradan dilediğin gibi özelleştirebilirsin
                 const karşılamaMetni = `Merhaba @${etiketle}, grubumuza hoş geldin! 🎉\n\nBalık avı paylaşımlarımızla keyifli ve güzel vakit geçirmeni dileriz. Rastgele! 🎣`;
 
                 try {
