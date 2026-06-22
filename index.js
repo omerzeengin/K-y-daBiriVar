@@ -21,13 +21,13 @@ app.listen(PORT, () => {
 });
 
 async function botuBaşlat() {
-    // Güvenli bağlantı için oturum klasörünü güncelliyoruz
-    const { state, saveCreds } = await useMultiFileAuthState('bot_guvenli_oturum');
+    // 405 hatasını aşmak için sıfır, temiz bir oturum klasörü tanımlıyoruz
+    const { state, saveCreds } = await useMultiFileAuthState('karsilama_kesin_cozum');
 
     const sock = makeWASocket({
         logger: pino({ level: 'silent' }),
         auth: state,
-        // WhatsApp'ın "Cihaz Bağlanamadı" hatasını aşmak için resmi Chrome kimliği tanımlıyoruz
+        // WhatsApp'ın bağlantıyı reddetmesini (405) engellemek için tarayıcı kimliği
         browser: Browsers.macOS('Desktop'),
         syncFullHistory: false,
         markOnlineOnConnect: true
