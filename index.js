@@ -2,12 +2,13 @@ const {
     default: makeWASocket, 
     useMultiFileAuthState, 
     DisconnectReason,
-    fetchLatestBaileysVersion
+    Browsers
 } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const express = require('express');
 
+// Render port hatasını çözmek için web sunucusu
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,14 +21,16 @@ app.listen(PORT, () => {
 });
 
 async function botuBaşlat() {
-    const { state, saveCreds } = await useMultiFileAuthState('bot_oturum_data');
-    const { version } = await fetchLatestBaileysVersion();
+    // Güvenli bağlantı için oturum klasörünü güncelliyoruz
+    const { state, saveCreds } = await useMultiFileAuthState('bot_guvenli_oturum');
 
     const sock = makeWASocket({
-        version,
         logger: pino({ level: 'silent' }),
         auth: state,
-        browser: ["KiyidanAv", "Chrome", "1.0.0"]
+        // WhatsApp'ın "Cihaz Bağlanamadı" hatasını aşmak için resmi Chrome kimliği tanımlıyoruz
+        browser: Browsers.macOS('Desktop'),
+        syncFullHistory: false,
+        markOnlineOnConnect: true
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -37,7 +40,7 @@ async function botuBaşlat() {
         
         if (qr) {
             console.log('\n=========================================');
-            console.log('   LÜTFEN BU QR KODU WHATSAPP ILE TARATIN');
+            console.log('   LÜTFEN BU YENİ QR KODU WHATSAPP ILE TARATIN');
             console.log('=========================================\n');
             qrcode.generate(qr, { small: true });
         }
@@ -79,30 +82,20 @@ async function botuBaşlat() {
     // 2. ÖZELLİK: MESAJLARI DİNLEME VE CEVAPLAMA 💬
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return; // Boşsa veya botun kendi mesajıysa işlem yapma
+        if (!msg.message || msg.key.fromMe) return;
 
         const chatId = msg.key.remoteJid;
-        // Mesajın text içeriğini alıyoruz ve küçük harfe çeviriyoruz (büyük/küçük harf duyarlılığı olmasın diye)
         const gelenMesaj = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim();
 
-        // --- SORU VE CEVAPLARI BURADA AYARLIYORSUN ---
-        
-        // Örnek 1: Sa veya Selam denirse
         if (gelenMesaj === 'sa' || gelenMesaj === 'selam' || gelenMesaj === 'selamlar') {
             await sock.sendMessage(chatId, { text: 'Aleyküm selam, hoş geldin! Raporlar ne alemde, var mı kıyıda hareket? 🎣' }, { quoted: msg });
         }
-        
-        // Örnek 2: Merhaba denirse
         else if (gelenMesaj === 'merhaba') {
             await sock.sendMessage(chatId, { text: 'Merhaba! Keyifli sohbetler, rastgele. 🐟' }, { quoted: msg });
         }
-
-        // Örnek 3: Botun ismini veya amacını sorarlarsa
         else if (gelenMesaj === 'bot' || gelenMesaj === 'sen kimsin') {
             await sock.sendMessage(chatId, { text: 'Ben KıyıdaBiriVar grubunun resmi nöbetçi asistanıyım! Gruba yeni katılanları karşılar, meralardan bilgi taşırım. 🚀' }, { quoted: msg });
         }
-        
-        // Örnek 4: Rastgele/Rast gelsin denirse
         else if (gelenMesaj === 'rastgele' || gelenMesaj === 'rastgelsin') {
             await sock.sendMessage(chatId, { text: 'Eyvallah kral, hepimize rastgele! İğnen keskin, livarın dolu olsun. 🎣⚓' }, { quoted: msg });
         }
