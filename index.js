@@ -40,7 +40,7 @@ async function botuBaşlat() {
         if (action === 'add') {
             for (let numara of participants) {
                 const etiketle = numara.split('@')[0]; 
-                const karşılamaMetni = `Merhaba @${etiketle}, grubumuza hoş geldin! 🎉\n\nBalık avı paylaşımlarımızla keyifli ve güzel vakit geçirmeni dileriz. Rastgele! 🎣`;
+                const karşılamaMetni = `Merhaba @${etiketle}, grubumuza hoş geldiniz! 🎉\n\nBalık avı paylaşımlarımızla keyifli ve güzel vakit geçirmeni dileriz. Rastgele! 🎣`;
 
                 try {
                     await sock.sendMessage(id, { 
