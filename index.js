@@ -6,9 +6,21 @@ const {
 } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
+const express = require('express');
+
+// Render port hatasını çözmek için sahte web sunucusu başlatıyoruz
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send('Bot aktif ve arka planda çalışıyor! 🎣');
+});
+
+app.listen(PORT, () => {
+    console.log(`Web sunucusu ${PORT} portunda başarıyla başlatıldı.`);
+});
 
 async function botuBaşlat() {
-    // Hafıza ve klasör çakışmalarını önlemek için oturumu başlatıyoruz
     const { state, saveCreds } = await useMultiFileAuthState('bot_oturum_data');
     const { version } = await fetchLatestBaileysVersion();
 
@@ -24,7 +36,6 @@ async function botuBaşlat() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
-        // QR kod üretildiğinde terminale küçük boyutta çizdiriyoruz
         if (qr) {
             console.log('\n=========================================');
             console.log('   LÜTFEN BU QR KODU WHATSAPP ILE TARATIN');
@@ -37,16 +48,14 @@ async function botuBaşlat() {
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             console.log(`Bağlantı kapandı (Durum: ${statusCode}). Tekrar bağlanıyor: `, shouldReconnect);
             
-            // Eğer oturum tamamen çıkış yapmadıysa güvenli bir şekilde yeniden başlat
             if (shouldReconnect) {
-                setTimeout(() => botuBaşlat(), 5000); // Sunucuyu yormamak için 5 saniye bekle
+                setTimeout(() => botuBaşlat(), 5000);
             }
         } else if (connection === 'open') {
             console.log('\n🚀 BAŞARILI: Kral Bot başarıyla WhatsApp\'a bağlandı! 🎉\n');
         }
     });
 
-    // Yeni üye katılım takibi
     sock.ev.on('group-participants.update', async (update) => {
         const { id, participants, action } = update;
 
@@ -69,5 +78,4 @@ async function botuBaşlat() {
     });
 }
 
-// Olası ilk çalıştırma hatalarını yakalamak için catch bloğu ile başlatıyoruz
 botuBaşlat().catch(err => console.error("Başlatma hatası: ", err));
