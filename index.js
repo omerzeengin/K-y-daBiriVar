@@ -1,4 +1,4 @@
-const { 
+cconst { 
     default: makeWASocket, 
     useMultiFileAuthState, 
     DisconnectReason,
@@ -8,7 +8,6 @@ const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const express = require('express');
 
-// Render port hatasını çözmek için sahte web sunucusu başlatıyoruz
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -56,24 +55,56 @@ async function botuBaşlat() {
         }
     });
 
+    // 1. ÖZELLİK: YENİ ÜYE KARŞILAMA
     sock.ev.on('group-participants.update', async (update) => {
         const { id, participants, action } = update;
 
         if (action === 'add') {
             for (let numara of participants) {
                 const etiketle = numara.split('@')[0]; 
-                const karşılamaMetni = `Merhaba @${etiketle}, grubumuza hoş geldiniz! 🎉\n\nBalık avı paylaşımlarımızla keyifli ve güzel vakit geçirmeni dileriz. Rastgele! 🎣`;
+                const karşılamaMetni = `Merhaba @${etiketle}, grubumuza hoş geldin! 🎉\n\nBalık avı paylaşımlarımızla keyifli ve güzel vakit geçirmeni dileriz. Rastgele! 🎣`;
 
                 try {
                     await sock.sendMessage(id, { 
                         text: karşılamaMetni, 
                         mentions: [numara] 
                     });
-                    console.log(`Yeni üye (${etiketle}) karşılandı.`);
                 } catch (hata) {
-                    console.error("Mesaj gönderilemedi: ", hata);
+                    console.error("Karşılama gönderilemedi: ", hata);
                 }
             }
+        }
+    });
+
+    // 2. ÖZELLİK: MESAJLARI DİNLEME VE CEVAPLAMA 💬
+    sock.ev.on('messages.upsert', async (m) => {
+        const msg = m.messages[0];
+        if (!msg.message || msg.key.fromMe) return; // Boşsa veya botun kendi mesajıysa işlem yapma
+
+        const chatId = msg.key.remoteJid;
+        // Mesajın text içeriğini alıyoruz ve küçük harfe çeviriyoruz (büyük/küçük harf duyarlılığı olmasın diye)
+        const gelenMesaj = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim();
+
+        // --- SORU VE CEVAPLARI BURADA AYARLIYORSUN ---
+        
+        // Örnek 1: Sa veya Selam denirse
+        if (gelenMesaj === 'sa' || gelenMesaj === 'selam' || gelenMesaj === 'selamlar') {
+            await sock.sendMessage(chatId, { text: 'Aleyküm selam, hoş geldin! Raporlar ne alemde, var mı kıyıda hareket? 🎣' }, { quoted: msg });
+        }
+        
+        // Örnek 2: Merhaba denirse
+        else if (gelenMesaj === 'merhaba') {
+            await sock.sendMessage(chatId, { text: 'Merhaba! Keyifli sohbetler, rastgele. 🐟' }, { quoted: msg });
+        }
+
+        // Örnek 3: Botun ismini veya amacını sorarlarsa
+        else if (gelenMesaj === 'bot' || gelenMesaj === 'sen kimsin') {
+            await sock.sendMessage(chatId, { text: 'Ben KıyıdaBiriVar grubunun resmi nöbetçi asistanıyım! Gruba yeni katılanları karşılar, meralardan bilgi taşırım. 🚀' }, { quoted: msg });
+        }
+        
+        // Örnek 4: Rastgele/Rast gelsin denirse
+        else if (gelenMesaj === 'rastgele' || gelenMesaj === 'rastgelsin') {
+            await sock.sendMessage(chatId, { text: 'Eyvallah kral, hepimize rastgele! İğnen keskin, livarın dolu olsun. 🎣⚓' }, { quoted: msg });
         }
     });
 }
